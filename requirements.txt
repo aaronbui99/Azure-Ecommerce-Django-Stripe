@@ -1,0 +1,45 @@
+# Core Django and Web Framework
+Django>=4.2.0,<5.0
+django-environ>=0.10.0
+
+# Database
+psycopg2-binary>=2.9.0
+dj-database-url>=2.0.0
+
+# Caching and Sessions
+django-redis>=5.2.0
+
+# Azure Integration
+django-storages[azure]>=1.13.0
+azure-storage-blob>=12.0.0
+azure-identity>=1.13.0
+azure-keyvault-secrets>=4.7.0
+
+# Authentication and Security
+django-axes>=6.0.0
+django-csp>=3.7.0
+django-cors-headers>=4.0.0
+
+# Payment Processing
+stripe>=5.0.0
+
+# API and Forms
+djangorestframework>=3.14.0
+django-crispy-forms>=2.0.0
+crispy-bootstrap5>=0.7.0
+
+# Async and Background Tasks
+celery>=5.2.0
+redis>=4.5.0
+
+# Monitoring and Logging
+opencensus-ext-azure>=1.1.0
+opencensus-ext-django>=0.8.0
+opencensus-ext-logging>=0.1.1
+
+# Development
+python-decouple>=3.6.0
+whitenoise>=6.4.0
+
+# Production
+gunicorn>=20.1.0

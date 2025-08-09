@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="hero-section bg-primary text-white py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6">
+                <h1 class="display-4">{{ title }}</h1>
+                <p class="lead">A modern e-commerce platform built with Django and powered by Azure cloud services with Stripe payments.</p>
+                <a href="{% url 'products:list' %}" class="btn btn-light btn-lg">Shop Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3>🛍️ Shop</h3>
+                    <p>Browse our extensive product catalog with advanced search and filtering.</p>
+                    <a href="{% url 'products:list' %}" class="btn btn-primary">View Products</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3>💳 Secure Payments</h3>
+                    <p>Safe and secure checkout powered by Stripe with multiple payment options.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3>🌍 Global Delivery</h3>
+                    <p>Fast worldwide shipping with real-time tracking and delivery updates.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-4">Powered by Azure</h2>
+        <div class="row">
+            <div class="col-md-3 text-center">
+                <h5>Azure App Service</h5>
+                <p>Scalable web hosting</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <h5>Azure SQL Database</h5>
+                <p>Managed database service</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <h5>Azure Blob Storage</h5>
+                <p>Media file storage</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <h5>Azure Front Door</h5>
+                <p>Global CDN & WAF</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
