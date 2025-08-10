@@ -9,6 +9,7 @@ from .serializers import OrderSerializer, CartSerializer, CartItemSerializer, Ad
 
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Order.objects.all()  # Base queryset (will be filtered in get_queryset)
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
     

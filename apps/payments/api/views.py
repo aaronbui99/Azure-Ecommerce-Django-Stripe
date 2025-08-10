@@ -17,6 +17,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Payment.objects.all()  # Base queryset (will be filtered in get_queryset)
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
     

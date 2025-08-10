@@ -1,6 +1,7 @@
 # Core Django and Web Framework
 Django>=4.2.0,<5.0
 django-environ>=0.10.0
+django-filter
 
 # Database
 psycopg2-binary>=2.9.0
@@ -8,6 +9,9 @@ dj-database-url>=2.0.0
 
 # Caching and Sessions
 django-redis>=5.2.0
+
+# Image handling
+Pillow
 
 # Azure Integration
 django-storages[azure]>=1.13.0

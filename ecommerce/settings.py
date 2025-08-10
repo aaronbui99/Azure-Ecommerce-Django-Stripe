@@ -180,16 +180,29 @@ CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Content Security Policy
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net")
-CSP_SCRIPT_SRC = ("'self'", "https://js.stripe.com")
-CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_CONNECT_SRC = ("'self'", "https://api.stripe.com")
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'style-src': ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"),
+        'script-src': ("'self'", "https://js.stripe.com"),
+        'img-src': ("'self'", "data:", "https:"),
+        'connect-src': ("'self'", "https://api.stripe.com"),
+    }
+}
 
 # Django Axes (Rate limiting)
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # 1 hour
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# Custom User Model
+AUTH_USER_MODEL = 'accounts.User'
 
 # Django REST Framework
 REST_FRAMEWORK = {
