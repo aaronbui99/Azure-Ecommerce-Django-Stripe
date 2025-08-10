@@ -42,7 +42,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Azure-Ecommerce-Django-Stripe.git
+git clone https://github.com/aaronbui99/Azure-Ecommerce-Django-Stripe.git
 cd Azure-Ecommerce-Django-Stripe
 
 # Create virtual environment
@@ -779,6 +779,10 @@ Contact us for enterprise pricing and support options.
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-blueviolet.svg)](https://stripe.com/)
 [![Python](https://img.shields.io/badge/Python-3.9+-yellow.svg)](https://python.org/)
 
-[⭐ Star this repo](https://github.com/yourusername/Azure-Ecommerce-Django-Stripe) • [🐛 Report Bug](https://github.com/yourusername/Azure-Ecommerce-Django-Stripe/issues) • [✨ Request Feature](https://github.com/yourusername/Azure-Ecommerce-Django-Stripe/issues)
+[⭐ Star this repo](https://github.com/aaronbui99/Azure-Ecommerce-Django-Stripe) • [🐛 Report Bug](https://github.com/aaronbui99/Azure-Ecommerce-Django-Stripe/issues) • [✨ Request Feature](https://github.com/aaronbui99/Azure-Ecommerce-Django-Stripe/issues)
 
 </div>
+
+## This project belongs to Bui Thanh Huy (Aaron Bui)
+- Email: aaronhuy2509@gmail.com
+- Linkedin: https://www.linkedin.com/in/huy-bui-thanh-372a56194/
