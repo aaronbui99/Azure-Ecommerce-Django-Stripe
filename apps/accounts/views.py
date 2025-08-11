@@ -3,13 +3,15 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView, UpdateView
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
+from django.contrib import messages
 from .models import User, UserProfile
+from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
 
 
 class LoginView(auth_views.LoginView):
     template_name = 'accounts/login.html'
+    form_class = CustomAuthenticationForm
     redirect_authenticated_user = True
 
 
@@ -20,12 +22,19 @@ class LogoutView(auth_views.LogoutView):
 class RegisterView(TemplateView):
     template_name = 'accounts/register.html'
     
+    def get(self, request):
+        form = CustomUserCreationForm()
+        return render(request, self.template_name, {'form': form})
+    
     def post(self, request):
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            UserProfile.objects.create(user=user)
-            login(request, user)
+            # Create user profile
+            UserProfile.objects.get_or_create(user=user)
+            # Explicitly specify the backend since multiple auth backends are configured
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(request, 'Account created successfully! Welcome to Azure E-commerce.')
             return redirect('core:home')
         return render(request, self.template_name, {'form': form})
 
@@ -39,8 +48,12 @@ class ProfileView(TemplateView):
 class ProfileEditView(UpdateView):
     model = User
     template_name = 'accounts/profile_edit.html'
-    fields = ['first_name', 'last_name', 'phone', 'street_address', 'city', 'state', 'postal_code', 'country']
+    form_class = UserProfileForm
     success_url = '/accounts/profile/'
     
     def get_object(self):
         return self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Profile updated successfully!')
+        return super().form_valid(form)
