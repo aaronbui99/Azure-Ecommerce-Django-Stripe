@@ -1,5 +1,6 @@
 # Azure-Ecommerce-Django-Stripe
 
+***************************** IN DEVELOPMENT NOT DONE (Aaron Bui 8/15/2025) *******************************************
 A modern Django-based e-commerce platform designed for global deployment on Microsoft Azure with Stripe payment integration. The architecture follows a "Monolith-first" approach with Active-Active configuration for global low-latency with minimal operations overhead.
 
 ## 🚀 Features
