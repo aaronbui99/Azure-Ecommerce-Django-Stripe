@@ -5,8 +5,12 @@ from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView, UpdateView
 from django.contrib.auth import login
 from django.contrib import messages
+import logging
 from .models import User, UserProfile
 from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class LoginView(auth_views.LoginView):
@@ -28,8 +32,14 @@ class RegisterView(TemplateView):
     
     def post(self, request):
         form = CustomUserCreationForm(request.POST)
+        
+        # Log password to command prompt for debugging
+        if 'password1' in request.POST:
+            password = request.POST['password1']
+
         if form.is_valid():
             user = form.save()
+            
             # Create user profile
             UserProfile.objects.get_or_create(user=user)
             # Explicitly specify the backend since multiple auth backends are configured
