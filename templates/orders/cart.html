@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shopping Cart - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Shopping Cart</h1>
+        </div>
+    </div>
+
+    {% if cart and cart.items.all %}
+        <div class="row">
+            <!-- Cart Items -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        {% for item in cart.items.all %}
+                            <div class="row align-items-center py-3 cart-item {% if not forloop.last %}border-bottom{% endif %}" 
+                                 data-item-id="{{ item.id }}">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            {% if item.product.featured_image %}
+                                                <img src="{{ item.product.featured_image.url }}" 
+                                                     alt="{{ item.product.name }}" 
+                                                     class="img-thumbnail" 
+                                                     style="width: 80px; height: 80px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="bg-light d-flex align-items-center justify-content-center" 
+                                                     style="width: 80px; height: 80px;">
+                                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">{{ item.product.name }}</h6>
+                                            <small class="text-muted">SKU: {{ item.product.sku }}</small>
+                                            {% if item.variant %}
+                                                <br><small class="text-muted">{{ item.variant }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <span class="fw-bold">${{ item.price }}</span>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="input-group input-group-sm">
+                                        <button class="btn btn-outline-secondary quantity-btn" 
+                                                type="button" 
+                                                data-action="decrease" 
+                                                data-item-id="{{ item.id }}">-</button>
+                                        <input type="number" 
+                                               class="form-control text-center quantity-input" 
+                                               value="{{ item.quantity }}" 
+                                               min="1" 
+                                               max="99"
+                                               data-item-id="{{ item.id }}">
+                                        <button class="btn btn-outline-secondary quantity-btn" 
+                                                type="button" 
+                                                data-action="increase" 
+                                                data-item-id="{{ item.id }}">+</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <span class="fw-bold item-subtotal">${{ item.subtotal }}</span>
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-danger btn-sm remove-btn" 
+                                            data-item-id="{{ item.id }}"
+                                            title="Remove item">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Summary -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Items ({{ cart.total_items }}):</span>
+                            <span id="cart-subtotal">${{ cart.subtotal }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Shipping:</span>
+                            <span>Calculated at checkout</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Tax:</span>
+                            <span>Calculated at checkout</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-4">
+                            <strong>Subtotal:</strong>
+                            <strong id="cart-total">${{ cart.subtotal }}</strong>
+                        </div>
+                        
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'orders:checkout' %}" 
+                               class="btn btn-primary w-100 mb-3">
+                                Proceed to Checkout
+                            </a>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <small>
+                                    <a href="{% url 'accounts:login' %}?next={% url 'orders:checkout' %}">Sign in</a> 
+                                    or 
+                                    <a href="{% url 'accounts:register' %}">create an account</a> 
+                                    to checkout
+                                </small>
+                            </div>
+                        {% endif %}
+                        
+                        <a href="{% url 'products:list' %}" 
+                           class="btn btn-outline-secondary w-100">
+                            Continue Shopping
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-shopping-cart fa-3x text-muted"></i>
+            </div>
+            <h3 class="text-muted">Your Cart is Empty</h3>
+            <p class="text-muted">Add some products to get started!</p>
+            <a href="{% url 'products:list' %}" class="btn btn-primary">Start Shopping</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    .cart-item {
+        transition: background-color 0.2s ease;
+    }
+    
+    .cart-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .quantity-input {
+        max-width: 60px;
+    }
+    
+    .img-thumbnail {
+        border-radius: 8px;
+    }
+    
+    .remove-btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .quantity-btn {
+        width: 35px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quantity change handlers
+    document.querySelectorAll('.quantity-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            const action = this.dataset.action;
+            const input = document.querySelector(`input[data-item-id="${itemId}"]`);
+            
+            let newQuantity = parseInt(input.value);
+            if (action === 'increase') {
+                newQuantity = Math.min(newQuantity + 1, 99);
+            } else if (action === 'decrease') {
+                newQuantity = Math.max(newQuantity - 1, 0);
+            }
+            
+            updateCartItem(itemId, newQuantity);
+        });
+    });
+    
+    // Quantity input change handler
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const itemId = this.dataset.itemId;
+            const quantity = Math.max(0, Math.min(99, parseInt(this.value) || 0));
+            updateCartItem(itemId, quantity);
+        });
+    });
+    
+    // Remove button handlers
+    document.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const itemId = this.dataset.itemId;
+            if (confirm('Are you sure you want to remove this item?')) {
+                updateCartItem(itemId, 0);
+            }
+        });
+    });
+    
+    function updateCartItem(itemId, quantity) {
+        fetch('{% url "orders:update_cart" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (quantity === 0) {
+                    // Remove the item row
+                    document.querySelector(`[data-item-id="${itemId}"]`).remove();
+                } else {
+                    // Update quantity input and subtotal
+                    document.querySelector(`input[data-item-id="${itemId}"]`).value = quantity;
+                    // You might want to update the subtotal here if you have the price
+                }
+                
+                // Update cart totals
+                document.getElementById('cart-subtotal').textContent = `$${data.subtotal}`;
+                document.getElementById('cart-total').textContent = `$${data.subtotal}`;
+                
+                // Update cart count in navbar if it exists
+                const cartCount = document.getElementById('cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_total;
+                }
+                
+                // Reload page if cart is empty
+                if (data.cart_total === 0) {
+                    location.reload();
+                }
+            } else {
+                alert(data.message || 'Error updating cart');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating cart');
+        });
+    }
+});
+
+// Add CSRF token to the page
+if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = '{{ csrf_token }}';
+    document.body.appendChild(csrfInput);
+}
+</script>
+{% endblock %}
