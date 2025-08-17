@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.urls import reverse
 from apps.orders.models import Order
-from .models import Payment, PaymentWebhookEvent, PaymentMethod
+from .models import Payment, PaymentWebhookEvent, PaymentMethod, StripeCustomer
 
 # Initialize Stripe
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -254,6 +254,11 @@ class PaymentMethodListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         return PaymentMethod.objects.filter(user=self.request.user, is_active=True)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['stripe_public_key'] = settings.STRIPE_PUBLISHABLE_KEY
+        return context
 
 
 class AddPaymentMethodView(LoginRequiredMixin, View):
@@ -261,6 +266,7 @@ class AddPaymentMethodView(LoginRequiredMixin, View):
         try:
             data = json.loads(request.body)
             payment_method_id = data.get('payment_method_id')
+            set_as_default = data.get('set_as_default', False)
             
             if not payment_method_id:
                 return JsonResponse({'error': 'Payment method ID required'}, status=400)
@@ -268,22 +274,39 @@ class AddPaymentMethodView(LoginRequiredMixin, View):
             # Retrieve payment method from Stripe
             pm = stripe.PaymentMethod.retrieve(payment_method_id)
             
-            # Attach to customer (create customer if doesn't exist)
-            if not hasattr(request.user, 'stripe_customer_id'):
+            # Get or create Stripe customer
+            stripe_customer, created = StripeCustomer.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'stripe_customer_id': ''  # Will be set below
+                }
+            )
+            
+            if created or not stripe_customer.stripe_customer_id:
+                # Create Stripe customer
                 customer = stripe.Customer.create(
                     email=request.user.email,
-                    name=request.user.get_full_name()
+                    name=request.user.get_full_name(),
+                    metadata={
+                        'user_id': str(request.user.id)
+                    }
                 )
-                # Save customer ID to user model
-                # You'd need to add this field to your User model
-                # request.user.stripe_customer_id = customer.id
-                # request.user.save()
+                stripe_customer.stripe_customer_id = customer.id
+                stripe_customer.save()
             
             # Attach payment method to customer
             stripe.PaymentMethod.attach(
                 payment_method_id,
-                customer=getattr(request.user, 'stripe_customer_id', None)
+                customer=stripe_customer.stripe_customer_id
             )
+            
+            # Determine if this should be the default
+            existing_methods_count = PaymentMethod.objects.filter(user=request.user, is_active=True).count()
+            is_default = set_as_default or existing_methods_count == 0
+            
+            # If setting as default, remove default from other methods
+            if is_default:
+                PaymentMethod.objects.filter(user=request.user, is_active=True).update(is_default=False)
             
             # Save payment method
             payment_method = PaymentMethod.objects.create(
@@ -294,7 +317,7 @@ class AddPaymentMethodView(LoginRequiredMixin, View):
                 card_last4=pm.card.last4 if pm.card else '',
                 card_exp_month=pm.card.exp_month if pm.card else None,
                 card_exp_year=pm.card.exp_year if pm.card else None,
-                is_default=not PaymentMethod.objects.filter(user=request.user).exists()
+                is_default=is_default
             )
             
             return JsonResponse({
@@ -329,6 +352,33 @@ class DeletePaymentMethodView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error removing payment method: {str(e)}')
             return redirect('payments:methods')
+
+
+class SetDefaultPaymentMethodView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        try:
+            # Get the payment method to set as default
+            payment_method = get_object_or_404(
+                PaymentMethod,
+                pk=pk,
+                user=request.user,
+                is_active=True
+            )
+            
+            # Remove default from all other payment methods
+            PaymentMethod.objects.filter(user=request.user, is_active=True).update(is_default=False)
+            
+            # Set this payment method as default
+            payment_method.is_default = True
+            payment_method.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Payment method set as default successfully'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
 
 class CreateTestOrderView(LoginRequiredMixin, View):

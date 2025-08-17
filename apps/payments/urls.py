@@ -11,5 +11,6 @@ urlpatterns = [
     path('methods/', views.PaymentMethodListView.as_view(), name='methods'),
     path('methods/add/', views.AddPaymentMethodView.as_view(), name='add_method'),
     path('methods/<int:pk>/delete/', views.DeletePaymentMethodView.as_view(), name='delete_method'),
+    path('methods/<int:pk>/set-default/', views.SetDefaultPaymentMethodView.as_view(), name='set_default_method'),
     path('test-order/', views.CreateTestOrderView.as_view(), name='create_test_order'),
 ]

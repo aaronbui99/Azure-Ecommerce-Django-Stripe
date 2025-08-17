@@ -149,6 +149,17 @@ class PaymentWebhookEvent(models.Model):
         return f"Webhook Event {self.stripe_event_id} - {self.event_type}"
 
 
+class StripeCustomer(models.Model):
+    """Store Stripe customer information"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='stripe_customer')
+    stripe_customer_id = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Stripe Customer {self.stripe_customer_id} for {self.user.email}"
+
+
 class PaymentMethod(models.Model):
     """Saved payment methods for users"""
     METHOD_TYPES = [

@@ -86,6 +86,18 @@ class Product(models.Model):
             return True
         return self.inventory_quantity > 0 or self.allow_backorder
     
+    @property
+    def featured_image(self):
+        """Returns the primary/featured image for this product"""
+        primary_image = self.images.filter(is_primary=True).first()
+        if primary_image:
+            return primary_image.image
+        # If no primary image, return the first image
+        first_image = self.images.first()
+        if first_image:
+            return first_image.image
+        return None
+    
     def __str__(self):
         return self.name
 

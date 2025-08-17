@@ -3,9 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views import View
 from ..models import Order, Cart, CartItem
 from apps.products.models import Product, ProductVariant
 from .serializers import OrderSerializer, CartSerializer, CartItemSerializer, AddToCartSerializer
+import json
 
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -131,3 +136,70 @@ class CartViewSet(viewsets.ViewSet):
             return Response({'message': 'Cart cleared'})
         except Cart.DoesNotExist:
             return Response({'message': 'Cart is already empty'})
+
+
+class CartCountView(View):
+    """Get cart count for both authenticated and anonymous users"""
+    
+    def get(self, request):
+        try:
+            if request.user.is_authenticated:
+                cart, created = Cart.objects.get_or_create(user=request.user)
+            else:
+                session_key = request.session.session_key
+                if not session_key:
+                    request.session.create()
+                    session_key = request.session.session_key
+                cart, created = Cart.objects.get_or_create(session_key=session_key)
+            
+            return JsonResponse({
+                'success': True,
+                'cart_total': cart.total_items
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UpdateCartAPIView(View):
+    """Update cart item via AJAX for both authenticated and anonymous users"""
+    
+    def post(self, request):
+        try:
+            # Parse JSON data
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            quantity = int(data.get('quantity', 1))
+            
+            # Get cart
+            if request.user.is_authenticated:
+                cart = get_object_or_404(Cart, user=request.user)
+            else:
+                session_key = request.session.session_key
+                cart = get_object_or_404(Cart, session_key=session_key)
+            
+            cart_item = get_object_or_404(CartItem, id=item_id, cart=cart)
+            
+            if quantity <= 0:
+                cart_item.delete()
+                message = 'Item removed from cart'
+            else:
+                cart_item.quantity = quantity
+                cart_item.save()
+                message = 'Cart updated'
+            
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'cart_total': cart.total_items,
+                'subtotal': float(cart.subtotal)
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)

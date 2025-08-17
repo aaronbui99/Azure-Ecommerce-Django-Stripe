@@ -249,9 +249,14 @@
                 {% for related in related_products %}
                 <div class="col-lg-3 col-md-6 mb-4">
                     <div class="card h-100">
-                        {% if related.images.first %}
-                        <img src="{{ related.images.first.image.url }}" class="card-img-top" 
+                        {% if related.featured_image %}
+                        <img src="{{ related.featured_image.url }}" class="card-img-top" 
                              alt="{{ related.name }}" style="height: 150px; object-fit: cover;">
+                        {% else %}
+                        <div class="card-img-top d-flex align-items-center justify-content-center bg-light" 
+                             style="height: 150px;">
+                            <span class="text-muted">No Image</span>
+                        </div>
                         {% endif %}
                         <div class="card-body">
                             <h6 class="card-title">{{ related.name }}</h6>
@@ -271,5 +276,4 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 {% endblock %}

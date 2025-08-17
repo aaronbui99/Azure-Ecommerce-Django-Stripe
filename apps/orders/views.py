@@ -98,7 +98,7 @@ class AddToCartView(View):
                 cart_item.save()
             
             # Return JSON for AJAX requests, redirect for form submissions
-            if request.content_type == 'application/json':
+            if request.content_type == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': True,
                     'message': f'{product.name} added to cart',
@@ -274,8 +274,52 @@ class OrderSuccessView(LoginRequiredMixin, TemplateView):
             try:
                 order = Order.objects.get(id=order_id, user=self.request.user)
                 context['order'] = order
+                
+                # Get recommended products
+                context['recommended_products'] = self.get_recommended_products(order)
+                
                 # Clear order_id from session
                 del self.request.session['order_id']
             except Order.DoesNotExist:
                 pass
         return context
+    
+    def get_recommended_products(self, order):
+        """Get recommended products based on the order"""
+        from django.db.models import Count, Q
+        
+        # Get categories from ordered products
+        ordered_categories = set()
+        for item in order.items.all():
+            if item.product and item.product.category:
+                ordered_categories.add(item.product.category)
+        
+        # Get product IDs from the order to exclude them
+        ordered_product_ids = [item.product.id for item in order.items.all() if item.product]
+        
+        recommended_products = []
+        
+        if ordered_categories:
+            # Get products from the same categories (excluding already ordered products)
+            category_products = Product.objects.filter(
+                category__in=ordered_categories,
+                is_active=True,
+                inventory_quantity__gt=0
+            ).exclude(
+                id__in=ordered_product_ids
+            ).select_related('category')[:8]
+            
+            recommended_products.extend(category_products)
+        
+        # If we don't have enough products, add some popular/featured products
+        if len(recommended_products) < 8:
+            additional_products = Product.objects.filter(
+                is_active=True,
+                inventory_quantity__gt=0
+            ).exclude(
+                id__in=ordered_product_ids + [p.id for p in recommended_products]
+            ).select_related('category').order_by('-created_at')[:8 - len(recommended_products)]
+            
+            recommended_products.extend(additional_products)
+        
+        return recommended_products[:8]

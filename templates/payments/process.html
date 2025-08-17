@@ -226,12 +226,8 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DEBUG: DOM loaded');
-    console.log('DEBUG: Order exists:', {{ order|yesno:"true,false" }});
-    console.log('DEBUG: Stripe public key:', '{{ stripe_public_key }}');
     
     {% if order and stripe_public_key %}
-        console.log('DEBUG: Initializing Stripe...');
         // Initialize Stripe
         const stripe = Stripe('{{ stripe_public_key }}');
         const elements = stripe.elements();
@@ -253,9 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Add an instance of the card Element into the `card-element` div
-        console.log('DEBUG: Mounting card element...');
         cardElement.mount('#card-element');
-        console.log('DEBUG: Card element mounted successfully');
         
         // Make card element globally available for test cards
         window.stripeElements = elements;
@@ -363,7 +357,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async function processWithSavedMethod(methodId) {
             // Implementation for saved payment methods would go here
-            console.log('Using saved method:', methodId);
             // For now, just show an error
             throw new Error('Saved payment methods not yet implemented');
         }
@@ -382,10 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     {% else %}
-        console.log('DEBUG: Stripe initialization skipped');
-        console.log('DEBUG: Order:', {{ order|yesno:"'exists','missing'" }});
-        console.log('DEBUG: Stripe key:', '{{ stripe_public_key }}' || 'missing');
-        
         // Show message to user
         const cardElement = document.getElementById('card-element');
         if (cardElement) {
