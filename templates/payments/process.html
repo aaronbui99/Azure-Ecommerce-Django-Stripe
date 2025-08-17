@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payment - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="mb-4">Payment</h1>
+            
+            {% if order %}
+                <!-- Test Cards Component (only in debug mode) -->
+                {% include 'payments/test_cards.html' %}
+                
+                <div class="row">
+                    <!-- Payment Form -->
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Payment Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="payment-form">
+                                    {% csrf_token %}
+                                    
+                                    <!-- Saved Payment Methods -->
+                                    {% if payment_methods %}
+                                        <div class="mb-4">
+                                            <h6>Saved Payment Methods</h6>
+                                            {% for method in payment_methods %}
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="radio" name="payment_method" 
+                                                           id="method_{{ method.id }}" value="{{ method.id }}">
+                                                    <label class="form-check-label" for="method_{{ method.id }}">
+                                                        <strong>{{ method.card_brand|upper }}</strong> ending in {{ method.card_last4 }}
+                                                        <br><small class="text-muted">Expires {{ method.card_exp_month }}/{{ method.card_exp_year }}</small>
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="radio" name="payment_method" 
+                                                       id="new_method" value="new" checked>
+                                                <label class="form-check-label" for="new_method">
+                                                    Use a new payment method
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Card Element -->
+                                    <div id="new-payment-section">
+                                        <div class="mb-3">
+                                            <label for="card-element" class="form-label">Credit or Debit Card</label>
+                                            <div id="card-element" class="form-control" style="height: 40px; padding: 10px;">
+                                                <!-- Stripe Elements will create form elements here -->
+                                            </div>
+                                            <!-- Used to display Element errors -->
+                                            <div id="card-errors" class="text-danger mt-2" role="alert"></div>
+                                        </div>
+
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" id="save_payment_method">
+                                            <label class="form-check-label" for="save_payment_method">
+                                                Save this payment method for future use
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid">
+                                        <button id="submit-button" class="btn btn-primary" type="submit">
+                                            <span id="button-text">Pay ${{ order.total }}</span>
+                                            <div id="spinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Order Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <small class="text-muted">Order #{{ order.order_number }}</small>
+                                </div>
+
+                                <!-- Order Items -->
+                                {% for item in order.items.all %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="flex-grow-1">
+                                            <small>{{ item.quantity }}x {{ item.product_name }}</small>
+                                        </div>
+                                        <div>
+                                            <small>${{ item.subtotal }}</small>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                <hr>
+                                
+                                <!-- Totals -->
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span>${{ order.subtotal }}</span>
+                                </div>
+                                {% if order.tax_amount %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Tax:</span>
+                                        <span>${{ order.tax_amount }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if order.shipping_cost %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Shipping:</span>
+                                        <span>${{ order.shipping_cost }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if order.discount_amount %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Discount:</span>
+                                        <span>-${{ order.discount_amount }}</span>
+                                    </div>
+                                {% endif %}
+                                <hr>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <strong>Total:</strong>
+                                    <strong>${{ order.total }}</strong>
+                                </div>
+
+                                <!-- Billing Address -->
+                                <div class="mt-4">
+                                    <h6>Billing Address</h6>
+                                    <p class="small text-muted mb-0">
+                                        {{ order.billing_first_name }} {{ order.billing_last_name }}<br>
+                                        {{ order.full_billing_address }}
+                                    </p>
+                                </div>
+
+                                <!-- Shipping Address -->
+                                <div class="mt-3">
+                                    <h6>Shipping Address</h6>
+                                    <p class="small text-muted mb-0">
+                                        {{ order.shipping_first_name }} {{ order.shipping_last_name }}<br>
+                                        {{ order.full_shipping_address }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-lock me-1"></i>
+                                Your payment information is secure and encrypted
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                    </div>
+                    <h3 class="text-muted">No Order Found</h3>
+                    <p class="text-muted">Please complete checkout first.</p>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{% url 'orders:cart' %}" class="btn btn-primary">Go to Cart</a>
+                        {% if debug %}
+                            <a href="{% url 'payments:create_test_order' %}" class="btn btn-warning">
+                                <i class="fas fa-flask me-1"></i>Create Test Order
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if debug %}
+                        <div class="mt-4">
+                            <div class="alert alert-info">
+                                <strong>Development Mode:</strong> You can create a test order to test the payment flow.
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    #card-element {
+        background-color: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    #card-element.StripeElement--focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+    }
+    
+    #card-element.StripeElement--invalid {
+        border-color: #dc3545;
+    }
+    
+    .payment-method-option {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .payment-method-option:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DEBUG: DOM loaded');
+    console.log('DEBUG: Order exists:', {{ order|yesno:"true,false" }});
+    console.log('DEBUG: Stripe public key:', '{{ stripe_public_key }}');
+    
+    {% if order and stripe_public_key %}
+        console.log('DEBUG: Initializing Stripe...');
+        // Initialize Stripe
+        const stripe = Stripe('{{ stripe_public_key }}');
+        const elements = stripe.elements();
+
+        // Create an instance of the card Element
+        const cardElement = elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    '::placeholder': {
+                        color: '#aab7c4',
+                    },
+                },
+                invalid: {
+                    color: '#9e2146',
+                },
+            },
+        });
+
+        // Add an instance of the card Element into the `card-element` div
+        console.log('DEBUG: Mounting card element...');
+        cardElement.mount('#card-element');
+        console.log('DEBUG: Card element mounted successfully');
+        
+        // Make card element globally available for test cards
+        window.stripeElements = elements;
+        window.stripeCardElement = cardElement;
+
+        // Handle real-time validation errors from the card Element
+        cardElement.on('change', function(event) {
+            const displayError = document.getElementById('card-errors');
+            if (event.error) {
+                displayError.textContent = event.error.message;
+            } else {
+                displayError.textContent = '';
+            }
+        });
+
+        // Handle form submission
+        const form = document.getElementById('payment-form');
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const submitButton = document.getElementById('submit-button');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.getElementById('spinner');
+            
+            // Disable button and show loading
+            submitButton.disabled = true;
+            buttonText.textContent = 'Processing...';
+            spinner.style.display = 'inline-block';
+
+            try {
+                // Check if using saved payment method
+                const selectedMethod = document.querySelector('input[name="payment_method"]:checked');
+                
+                if (selectedMethod && selectedMethod.value !== 'new') {
+                    // Use saved payment method
+                    await processWithSavedMethod(selectedMethod.value);
+                } else {
+                    // Get CSRF token
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    
+                    // Create payment intent first
+                    const response = await fetch('{% url "payments:create_intent" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    // Confirm payment with Stripe
+                    const result = await stripe.confirmCardPayment(data.client_secret, {
+                        payment_method: {
+                            card: cardElement,
+                        },
+                        setup_future_usage: document.getElementById('save_payment_method').checked ? 'on_session' : undefined
+                    });
+
+                    if (result.error) {
+                        throw new Error(result.error.message);
+                    }
+
+                    // Payment succeeded, confirm with backend
+                    await confirmPayment(result.paymentIntent.id);
+                }
+            } catch (error) {
+                // Show error to customer
+                const errorElement = document.getElementById('card-errors');
+                errorElement.textContent = error.message;
+            } finally {
+                // Re-enable button
+                submitButton.disabled = false;
+                buttonText.textContent = 'Pay ${{ order.total }}';
+                spinner.style.display = 'none';
+            }
+        });
+
+        async function confirmPayment(paymentIntentId) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const response = await fetch('{% url "payments:confirm" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    payment_intent_id: paymentIntentId
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redirect to success page
+                window.location.href = data.redirect_url;
+            } else {
+                throw new Error(data.error);
+            }
+        }
+
+        async function processWithSavedMethod(methodId) {
+            // Implementation for saved payment methods would go here
+            console.log('Using saved method:', methodId);
+            // For now, just show an error
+            throw new Error('Saved payment methods not yet implemented');
+        }
+
+        // Toggle new payment section based on selection
+        const paymentMethodRadios = document.querySelectorAll('input[name="payment_method"]');
+        const newPaymentSection = document.getElementById('new-payment-section');
+        
+        paymentMethodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'new') {
+                    newPaymentSection.style.display = 'block';
+                } else {
+                    newPaymentSection.style.display = 'none';
+                }
+            });
+        });
+    {% else %}
+        console.log('DEBUG: Stripe initialization skipped');
+        console.log('DEBUG: Order:', {{ order|yesno:"'exists','missing'" }});
+        console.log('DEBUG: Stripe key:', '{{ stripe_public_key }}' || 'missing');
+        
+        // Show message to user
+        const cardElement = document.getElementById('card-element');
+        if (cardElement) {
+            cardElement.innerHTML = '<div class="alert alert-warning">Unable to load payment form. Please try again or contact support.</div>';
+        }
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -188,14 +188,18 @@ CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
-# Content Security Policy
+# Content Security Policy (django-csp 4.0+ format)
 CONTENT_SECURITY_POLICY = {
     'DIRECTIVES': {
         'default-src': ("'self'",),
-        'style-src': ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"),
-        'script-src': ("'self'", "https://js.stripe.com"),
-        'img-src': ("'self'", "data:", "https:"),
-        'connect-src': ("'self'", "https://api.stripe.com"),
+        'style-src': ("'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"),
+        'script-src': ("'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net"),
+        'img-src': ("'self'", "data:", "https:", "https://*.stripe.com"),
+        'connect-src': ("'self'", "https://api.stripe.com", "https://*.stripe.com"),
+        'frame-src': ("'self'", "https://js.stripe.com", "https://*.stripe.com"),
+        'child-src': ("'self'", "https://js.stripe.com", "https://*.stripe.com"),
+        'form-action': ("'self'",),
+        'frame-ancestors': ("'none'",),
     }
 }
 

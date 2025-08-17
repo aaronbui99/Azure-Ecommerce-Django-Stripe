@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payment Methods - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Payment Methods</h1>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                    <i class="fas fa-plus me-2"></i>Add New Payment Method
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if payment_methods %}
+        <div class="row">
+            <div class="col-lg-8">
+                {% for method in payment_methods %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-center">
+                                    <!-- Card icon based on brand -->
+                                    <div class="me-3">
+                                        {% if method.card_brand == 'visa' %}
+                                            <i class="fab fa-cc-visa fa-2x text-primary"></i>
+                                        {% elif method.card_brand == 'mastercard' %}
+                                            <i class="fab fa-cc-mastercard fa-2x text-warning"></i>
+                                        {% elif method.card_brand == 'amex' %}
+                                            <i class="fab fa-cc-amex fa-2x text-success"></i>
+                                        {% elif method.card_brand == 'discover' %}
+                                            <i class="fab fa-cc-discover fa-2x text-info"></i>
+                                        {% else %}
+                                            <i class="far fa-credit-card fa-2x text-secondary"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">
+                                            {{ method.card_brand|upper }} •••• {{ method.card_last4 }}
+                                            {% if method.is_default %}
+                                                <span class="badge bg-success ms-2">Default</span>
+                                            {% endif %}
+                                        </h5>
+                                        <p class="text-muted mb-0">
+                                            Expires {{ method.card_exp_month|stringformat:"02d" }}/{{ method.card_exp_year }}
+                                        </p>
+                                        <small class="text-muted">
+                                            Added {{ method.created_at|date:"M d, Y" }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                                            data-bs-toggle="dropdown">
+                                        Actions
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        {% if not method.is_default %}
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="setAsDefault({{ method.id }})">
+                                                    <i class="fas fa-star me-2"></i>Set as Default
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                        <li>
+                                            <form method="post" action="{% url 'payments:delete_method' method.id %}" 
+                                                  onsubmit="return confirm('Are you sure you want to delete this payment method?')" 
+                                                  style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="fas fa-trash me-2"></i>Delete
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="far fa-credit-card fa-3x text-muted"></i>
+            </div>
+            <h3 class="text-muted">No Payment Methods</h3>
+            <p class="text-muted">Add a payment method to make checkout faster and easier.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                Add Your First Payment Method
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Payment Method Modal -->
+<div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPaymentModalLabel">Add New Payment Method</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-payment-form">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="card-element-modal" class="form-label">Credit or Debit Card</label>
+                        <div id="card-element-modal" class="form-control" style="height: 40px; padding: 10px;">
+                            <!-- Stripe Elements will create form elements here -->
+                        </div>
+                        <!-- Used to display Element errors -->
+                        <div id="card-errors-modal" class="text-danger mt-2" role="alert"></div>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="set_as_default">
+                        <label class="form-check-label" for="set_as_default">
+                            Set as default payment method
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-payment-method">
+                    <span id="save-button-text">Save Payment Method</span>
+                    <div id="save-spinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    #card-element-modal {
+        background-color: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    #card-element-modal.StripeElement--focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+    }
+    
+    #card-element-modal.StripeElement--invalid {
+        border-color: #dc3545;
+    }
+    
+    .card-brand-icon {
+        width: 40px;
+        height: 25px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Stripe (you'll need to pass the public key from the view)
+    // For now, this is a placeholder - you'd need to add stripe_public_key to the context
+    // const stripe = Stripe('{{ stripe_public_key }}');
+    
+    // Placeholder for Stripe functionality
+    console.log('Payment methods page loaded');
+    
+    // Modal shown event
+    const modal = document.getElementById('addPaymentModal');
+    modal.addEventListener('shown.bs.modal', function() {
+        // Initialize Stripe Elements when modal is shown
+        initializeStripeElements();
+    });
+    
+    function initializeStripeElements() {
+        // This would initialize Stripe Elements
+        // For now, just a placeholder
+        console.log('Initialize Stripe Elements here');
+    }
+    
+    function setAsDefault(methodId) {
+        // This would make an AJAX call to set the payment method as default
+        console.log('Set payment method as default:', methodId);
+        // You'd need to implement this endpoint in your backend
+    }
+    
+    // Save payment method button click
+    const saveButton = document.getElementById('save-payment-method');
+    saveButton.addEventListener('click', function() {
+        // This would save the payment method via Stripe API
+        console.log('Save payment method clicked');
+        
+        const buttonText = document.getElementById('save-button-text');
+        const spinner = document.getElementById('save-spinner');
+        
+        // Show loading state
+        saveButton.disabled = true;
+        buttonText.textContent = 'Saving...';
+        spinner.style.display = 'inline-block';
+        
+        // For demo purposes, simulate success after 2 seconds
+        setTimeout(function() {
+            // Reset button state
+            saveButton.disabled = false;
+            buttonText.textContent = 'Save Payment Method';
+            spinner.style.display = 'none';
+            
+            // Close modal and show success message
+            bootstrap.Modal.getInstance(document.getElementById('addPaymentModal')).hide();
+            
+            // You would typically reload the page or update the UI here
+            alert('Payment method would be saved here (not yet implemented)');
+        }, 2000);
+    });
+});
+</script>
+{% endblock %}

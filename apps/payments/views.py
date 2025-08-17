@@ -25,20 +25,31 @@ class PaymentProcessView(LoginRequiredMixin, TemplateView):
         
         # Get order from session
         order_id = self.request.session.get('order_id')
+        print(f"DEBUG: Session order_id: {order_id}")
+        print(f"DEBUG: Stripe public key: {settings.STRIPE_PUBLISHABLE_KEY}")
+        
         if order_id:
             try:
+                print(f"Fetching order with ID: {order_id}")
                 order = Order.objects.get(id=order_id, user=self.request.user)
                 context['order'] = order
-                context['stripe_public_key'] = settings.STRIPE_PUBLISHABLE_KEY
-                
-                # Get user's saved payment methods
-                context['payment_methods'] = PaymentMethod.objects.filter(
-                    user=self.request.user,
-                    is_active=True
-                )
+                print(f"DEBUG: Order found: {order.order_number}")
                 
             except Order.DoesNotExist:
-                pass
+                print(f"DEBUG: Order not found with ID: {order_id}")
+                context['order'] = None
+        else:
+            print("DEBUG: No order_id in session")
+            context['order'] = None
+        
+        # Always include stripe_public_key
+        context['stripe_public_key'] = settings.STRIPE_PUBLISHABLE_KEY
+        
+        # Get user's saved payment methods
+        context['payment_methods'] = PaymentMethod.objects.filter(
+            user=self.request.user,
+            is_active=True
+        )
         
         return context
 
@@ -46,7 +57,12 @@ class PaymentProcessView(LoginRequiredMixin, TemplateView):
 class CreatePaymentIntentView(LoginRequiredMixin, View):
     def post(self, request):
         try:
-            data = json.loads(request.body)
+            # Handle both JSON and form data
+            if request.content_type == 'application/json':
+                data = json.loads(request.body) if request.body else {}
+            else:
+                data = request.POST
+                
             order_id = request.session.get('order_id')
             
             if not order_id:
@@ -313,3 +329,84 @@ class DeletePaymentMethodView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error removing payment method: {str(e)}')
             return redirect('payments:methods')
+
+
+class CreateTestOrderView(LoginRequiredMixin, View):
+    """Create a test order for payment testing (only available in DEBUG mode)"""
+    
+    def get(self, request):
+        if not settings.DEBUG:
+            return redirect('core:home')
+        
+        try:
+            from decimal import Decimal
+            from apps.products.models import Product, Category
+            
+            # Create test category and products if they don't exist
+            category, created = Category.objects.get_or_create(
+                name='Test Category',
+                defaults={
+                    'slug': 'test-category',
+                    'description': 'Test category for payment testing'
+                }
+            )
+            
+            product, created = Product.objects.get_or_create(
+                sku='TEST-001',
+                defaults={
+                    'name': 'Test Product for Payment',
+                    'slug': 'test-product-payment',
+                    'description': 'A test product for payment testing',
+                    'price': Decimal('29.99'),
+                    'category': category,
+                    'is_active': True,
+                    'inventory_quantity': 100
+                }
+            )
+            
+            # Create test order
+            from apps.orders.models import Order, OrderItem
+            
+            order = Order.objects.create(
+                user=request.user,
+                email=request.user.email,
+                billing_first_name=request.user.first_name or 'Test',
+                billing_last_name=request.user.last_name or 'User',
+                billing_address_1='123 Test Street',
+                billing_city='Test City',
+                billing_state='Test State',
+                billing_postal_code='12345',
+                billing_country='United States',
+                billing_phone='555-123-4567',
+                shipping_first_name=request.user.first_name or 'Test',
+                shipping_last_name=request.user.last_name or 'User',
+                shipping_address_1='123 Test Street',
+                shipping_city='Test City',
+                shipping_state='Test State',
+                shipping_postal_code='12345',
+                shipping_country='United States',
+                shipping_phone='555-123-4567',
+                subtotal=product.price,
+                total=product.price,
+                status='pending'
+            )
+            
+            # Create order item
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                product_name=product.name,
+                product_sku=product.sku,
+                unit_price=product.price,
+                quantity=1
+            )
+            
+            # Set order in session
+            request.session['order_id'] = str(order.id)
+            
+            messages.success(request, f'Test order created: {order.order_number}')
+            return redirect('payments:process')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating test order: {str(e)}')
+            return redirect('core:home')

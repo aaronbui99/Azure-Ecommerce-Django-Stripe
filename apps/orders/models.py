@@ -60,7 +60,7 @@ class Order(models.Model):
     
     # Order identification
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    order_number = models.CharField(max_length=20, unique=True)
+    order_number = models.CharField(max_length=40, unique=True)
     
     # Customer information
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
@@ -73,9 +73,9 @@ class Order(models.Model):
     billing_address_2 = models.CharField(max_length=255, blank=True)
     billing_city = models.CharField(max_length=100)
     billing_state = models.CharField(max_length=100)
-    billing_postal_code = models.CharField(max_length=20)
+    billing_postal_code = models.CharField(max_length=50)
     billing_country = models.CharField(max_length=100)
-    billing_phone = models.CharField(max_length=20, blank=True)
+    billing_phone = models.CharField(max_length=50, blank=True)
     
     # Shipping address
     shipping_first_name = models.CharField(max_length=50)
@@ -113,8 +113,12 @@ class Order(models.Model):
         if not self.order_number:
             # Generate order number
             import datetime
+            import random
+            import string
             now = datetime.datetime.now()
-            self.order_number = f"ORD-{now.strftime('%Y%m%d')}-{str(self.id)[:8].upper()}"
+            # Generate a random suffix instead of using ID (which might not exist yet)
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            self.order_number = f"ORD-{now.strftime('%Y%m%d')}-{suffix}"
         super().save(*args, **kwargs)
     
     def __str__(self):

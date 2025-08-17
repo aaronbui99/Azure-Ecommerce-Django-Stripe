@@ -1,0 +1,149 @@
+{% comment %}
+Stripe Test Cards Component
+Include this in payment forms during development/testing
+{% endcomment %}
+
+{% if debug %}
+<div class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h6 class="mb-0"><i class="fas fa-test-tube me-2"></i>Test Mode - Quick Test Cards</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-success">Success Scenarios</h6>
+                <div class="btn-group-vertical w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-success btn-sm test-card-btn" 
+                            data-card="4242424242424242" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Visa</strong> - Success (4242 4242 4242 4242)
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm test-card-btn" 
+                            data-card="5555555555554444" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Mastercard</strong> - Success (5555 5555 5555 4444)
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm test-card-btn" 
+                            data-card="378282246310005" data-exp="12/25" data-cvc="1234" data-zip="12345">
+                        <strong>American Express</strong> - Success (3782 8224 6310 005)
+                    </button>
+                </div>
+                
+                <h6 class="text-info">Authentication Required (3D Secure)</h6>
+                <div class="btn-group-vertical w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-info btn-sm test-card-btn" 
+                            data-card="4000002760003184" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Visa</strong> - 3D Secure Required
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm test-card-btn" 
+                            data-card="4000002500003155" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Visa</strong> - 3D Secure Optional
+                    </button>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h6 class="text-danger">Decline Scenarios</h6>
+                <div class="btn-group-vertical w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000000002" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Generic Decline</strong> (4000 0000 0000 0002)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000009995" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Insufficient Funds</strong> (4000 0000 0000 9995)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000009987" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Lost Card</strong> (4000 0000 0000 9987)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000009979" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Stolen Card</strong> (4000 0000 0000 9979)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000000069" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Expired Card</strong> (4000 0000 0000 0069)
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm test-card-btn" 
+                            data-card="4000000000000127" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Incorrect CVC</strong> (4000 0000 0000 0127)
+                    </button>
+                </div>
+                
+                <h6 class="text-warning">Processing Errors</h6>
+                <div class="btn-group-vertical w-100" role="group">
+                    <button type="button" class="btn btn-outline-warning btn-sm test-card-btn" 
+                            data-card="4000000000000119" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Processing Error</strong> (4000 0000 0000 0119)
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm test-card-btn" 
+                            data-card="4242424242424241" data-exp="12/25" data-cvc="123" data-zip="12345">
+                        <strong>Incorrect Number</strong> (4242 4242 4242 4241)
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="alert alert-info mb-0">
+                    <small>
+                        <strong>Note:</strong> These are Stripe test cards. Use any future expiry date, any 3-digit CVC (4 digits for Amex), 
+                        and any valid ZIP code. Never use real card numbers in test mode.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle test card button clicks
+    document.querySelectorAll('.test-card-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const cardNumber = this.dataset.card;
+            const expiry = this.dataset.exp;
+            const cvc = this.dataset.cvc;
+            const zip = this.dataset.zip;
+            
+            // Copy card number to clipboard and show instructions
+            navigator.clipboard.writeText(cardNumber).then(function() {
+                // Show instructions in the card errors area
+                const cardErrors = document.getElementById('card-errors');
+                if (cardErrors) {
+                    cardErrors.innerHTML = `
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <strong>Test card copied to clipboard!</strong><br>
+                            <strong>Card:</strong> ${cardNumber.replace(/(.{4})/g, '$1 ')}<br>
+                            <strong>Expiry:</strong> ${expiry} | <strong>CVC:</strong> ${cvc}<br>
+                            <small>Paste the card number into the form above, then enter the expiry and CVC manually.</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                }
+                
+                // Focus the card element
+                const cardElement = document.getElementById('card-element');
+                if (cardElement) {
+                    cardElement.focus();
+                }
+            }).catch(function(err) {
+                // Fallback if clipboard API fails
+                const cardErrors = document.getElementById('card-errors');
+                if (cardErrors) {
+                    cardErrors.innerHTML = `
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <strong>Test Card Details:</strong><br>
+                            <strong>Card:</strong> ${cardNumber.replace(/(.{4})/g, '$1 ')}<br>
+                            <strong>Expiry:</strong> ${expiry} | <strong>CVC:</strong> ${cvc}<br>
+                            <small>Copy and paste these details into the payment form above.</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                }
+            });
+        });
+    });
+});
+</script>
+{% endif %}

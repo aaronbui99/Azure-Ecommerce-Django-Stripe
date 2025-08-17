@@ -55,7 +55,12 @@ class CartView(TemplateView):
 class AddToCartView(View):
     def post(self, request):
         try:
-            data = json.loads(request.body)
+            # Handle both JSON and form data
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+            
             product_id = data.get('product_id')
             variant_id = data.get('variant_id')
             quantity = int(data.get('quantity', 1))
@@ -92,23 +97,37 @@ class AddToCartView(View):
                 cart_item.quantity += quantity
                 cart_item.save()
             
-            return JsonResponse({
-                'success': True,
-                'message': f'{product.name} added to cart',
-                'cart_total': cart.total_items
-            })
+            # Return JSON for AJAX requests, redirect for form submissions
+            if request.content_type == 'application/json':
+                return JsonResponse({
+                    'success': True,
+                    'message': f'{product.name} added to cart',
+                    'cart_total': cart.total_items
+                })
+            else:
+                messages.success(request, f'{product.name} added to cart')
+                return redirect('orders:cart')
             
         except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            }, status=400)
+            if request.content_type == 'application/json':
+                return JsonResponse({
+                    'success': False,
+                    'message': str(e)
+                }, status=400)
+            else:
+                messages.error(request, f'Error adding to cart: {str(e)}')
+                return redirect('products:list')
 
 
 class UpdateCartView(View):
     def post(self, request):
         try:
-            data = json.loads(request.body)
+            # Handle both JSON and form data
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+                
             item_id = data.get('item_id')
             quantity = int(data.get('quantity', 1))
             
