@@ -162,8 +162,22 @@ if env('USE_AZURE_STORAGE'):
     AZURE_ACCOUNT_KEY = env('AZURE_BLOB_KEY', default='')
     AZURE_CONTAINER = env('AZURE_CONTAINER', default='media')
     
-    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    # Django-storages Azure configuration
+    DEFAULT_FILE_STORAGE = 'apps.core.storage.AzureMediaStorage'
+    
+    # Azure Storage settings for django-storages
     AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
+    AZURE_CONNECTION_STRING = None  # We use account key instead
+    AZURE_SSL = True
+    AZURE_UPLOAD_MAX_CONN = 2
+    AZURE_TIMEOUT = 20
+    AZURE_MAX_MEMORY_SIZE = 2*1024*1024  # 2MB
+    AZURE_BLOB_MAX_MEMORY_SIZE = 2*1024*1024  # 2MB
+    AZURE_URL_EXPIRATION_SECS = None  # SAS tokens handled in custom storage backend
+    AZURE_OVERWRITE_FILES = True  # Allow file overwrites
+    AZURE_LOCATION = ''  # Root of container
+    
+    # Media URL configuration - Azure Storage with SAS token authentication
     MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
 
 # Default primary key field type

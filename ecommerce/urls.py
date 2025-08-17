@@ -17,6 +17,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+import environ
+
+# Initialize environment and read .env file
+env = environ.Env()
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(BASE_DIR / '.env')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,6 +35,6 @@ urlpatterns = [
     path('api/', include('ecommerce.api_urls')),
 ]
 
-# Serve media files during development
-if settings.DEBUG:
+# Serve media files during development (local storage only)
+if not env.bool('USE_AZURE_STORAGE', default=False) and settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
