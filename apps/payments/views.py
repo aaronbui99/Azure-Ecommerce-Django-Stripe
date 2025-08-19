@@ -381,6 +381,113 @@ class SetDefaultPaymentMethodView(LoginRequiredMixin, View):
             return JsonResponse({'error': str(e)}, status=400)
 
 
+class ProcessSavedPaymentMethodView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            # Parse request data
+            try:
+                data = json.loads(request.body.decode('utf-8')) if request.body else {}
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+            
+            payment_method_id = data.get('payment_method_id')
+            
+            if not payment_method_id:
+                return JsonResponse({'error': 'Payment method ID is required'}, status=400)
+            
+            # Convert to integer if it's a string
+            try:
+                payment_method_id = int(payment_method_id)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid payment method ID format'}, status=400)
+            
+            # Get order from session
+            order_id = request.session.get('order_id')
+            if not order_id:
+                return JsonResponse({'error': 'No order found in session. Please complete checkout first.'}, status=400)
+            
+            try:
+                order = Order.objects.get(id=order_id, user=request.user)
+            except Order.DoesNotExist:
+                return JsonResponse({'error': 'Order not found or access denied'}, status=400)
+            
+            # Get the saved payment method
+            try:
+                payment_method = PaymentMethod.objects.get(
+                    id=payment_method_id,
+                    user=request.user,
+                    is_active=True
+                )
+            except PaymentMethod.DoesNotExist:
+                return JsonResponse({'error': 'Payment method not found or access denied'}, status=400)
+            
+            # Get Stripe customer
+            try:
+                stripe_customer = StripeCustomer.objects.get(user=request.user)
+            except StripeCustomer.DoesNotExist:
+                return JsonResponse({'error': 'Stripe customer not found. Please add a payment method first.'}, status=400)
+            
+            # Create PaymentIntent with the saved payment method
+            intent = stripe.PaymentIntent.create(
+                amount=int(order.total * 100),  # Convert to cents
+                currency='usd',
+                customer=stripe_customer.stripe_customer_id,
+                payment_method=payment_method.stripe_payment_method_id,
+                confirmation_method='manual',
+                confirm=True,
+                return_url=request.build_absolute_uri(reverse('orders:success')),
+                metadata={
+                    'order_id': str(order.id),
+                    'user_id': str(request.user.id),
+                }
+            )
+            
+            # Create Payment record
+            payment = Payment.objects.create(
+                order=order,
+                user=request.user,
+                amount=order.total,
+                stripe_payment_intent_id=intent.id,
+                payment_method='stripe_card',  # Use existing choice instead of 'stripe_saved_card'
+                stripe_payment_method_id=payment_method.stripe_payment_method_id,
+                description=f'Payment for order {order.order_number} (saved card ending in {payment_method.card_last4})'
+            )
+            
+            # Handle the payment intent status
+            if intent.status == 'succeeded':
+                payment.status = 'succeeded'
+                payment.stripe_charge_id = intent.charges.data[0].id if intent.charges.data else ''
+                payment.save()
+                
+                # Update order status
+                order.status = 'confirmed'
+                order.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'redirect_url': reverse('orders:success')
+                })
+            elif intent.status == 'requires_action':
+                return JsonResponse({
+                    'requires_action': True,
+                    'payment_intent_client_secret': intent.client_secret
+                })
+            else:
+                payment.status = 'failed'
+                payment.failure_reason = intent.last_payment_error.message if intent.last_payment_error else 'Payment failed'
+                payment.save()
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': intent.last_payment_error.message if intent.last_payment_error else 'Payment failed'
+                })
+                
+        except stripe.error.CardError as e:
+            return JsonResponse({'error': e.user_message}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+
 class CreateTestOrderView(LoginRequiredMixin, View):
     """Create a test order for payment testing (only available in DEBUG mode)"""
     

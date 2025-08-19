@@ -356,9 +356,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         async function processWithSavedMethod(methodId) {
-            // Implementation for saved payment methods would go here
-            // For now, just show an error
-            throw new Error('Saved payment methods not yet implemented');
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            console.log('DEBUG: Processing saved payment method');
+            console.log('DEBUG: Method ID:', methodId);
+            console.log('DEBUG: CSRF Token:', csrfToken);
+            
+            try {
+                const requestData = {
+                    payment_method_id: methodId
+                };
+                
+                console.log('DEBUG: Request data:', requestData);
+                
+                // Process payment with saved method
+                const response = await fetch('{% url "payments:process_saved" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('DEBUG: Response status:', response.status);
+                console.log('DEBUG: Response headers:', response.headers);
+
+                const data = await response.json();
+                console.log('DEBUG: Response data:', data);
+                
+                if (data.error) {
+                    console.error('ERROR: Server returned error:', data.error);
+                    throw new Error(data.error);
+                }
+
+                if (data.requires_action) {
+                    // Handle 3D Secure authentication if required
+                    const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
+                    
+                    if (result.error) {
+                        throw new Error(result.error.message);
+                    }
+                    
+                    // Payment succeeded after authentication, confirm with backend
+                    await confirmPayment(result.paymentIntent.id);
+                } else if (data.success) {
+                    // Payment succeeded immediately, redirect to success page
+                    window.location.href = data.redirect_url;
+                } else {
+                    throw new Error(data.error || 'Payment failed');
+                }
+                
+            } catch (error) {
+                console.error('ERROR in processWithSavedMethod:', error);
+                throw error; // Re-throw to be handled by the main error handling
+            }
         }
 
         // Toggle new payment section based on selection

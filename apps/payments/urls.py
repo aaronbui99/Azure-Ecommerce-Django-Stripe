@@ -7,6 +7,7 @@ urlpatterns = [
     path('process/', views.PaymentProcessView.as_view(), name='process'),
     path('create-intent/', views.CreatePaymentIntentView.as_view(), name='create_intent'),
     path('confirm/', views.PaymentConfirmView.as_view(), name='confirm'),
+    path('process-saved/', views.ProcessSavedPaymentMethodView.as_view(), name='process_saved'),
     path('webhook/', views.StripeWebhookView.as_view(), name='webhook'),
     path('methods/', views.PaymentMethodListView.as_view(), name='methods'),
     path('methods/add/', views.AddPaymentMethodView.as_view(), name='add_method'),
