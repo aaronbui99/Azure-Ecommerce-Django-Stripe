@@ -25,21 +25,15 @@ class PaymentProcessView(LoginRequiredMixin, TemplateView):
         
         # Get order from session
         order_id = self.request.session.get('order_id')
-        print(f"DEBUG: Session order_id: {order_id}")
-        print(f"DEBUG: Stripe public key: {settings.STRIPE_PUBLISHABLE_KEY}")
         
         if order_id:
             try:
-                print(f"Fetching order with ID: {order_id}")
                 order = Order.objects.get(id=order_id, user=self.request.user)
                 context['order'] = order
-                print(f"DEBUG: Order found: {order.order_number}")
                 
             except Order.DoesNotExist:
-                print(f"DEBUG: Order not found with ID: {order_id}")
                 context['order'] = None
         else:
-            print("DEBUG: No order_id in session")
             context['order'] = None
         
         # Always include stripe_public_key
@@ -401,10 +395,21 @@ class ProcessSavedPaymentMethodView(LoginRequiredMixin, View):
             except (ValueError, TypeError):
                 return JsonResponse({'error': 'Invalid payment method ID format'}, status=400)
             
+            
             # Get order from session
             order_id = request.session.get('order_id')
             if not order_id:
-                return JsonResponse({'error': 'No order found in session. Please complete checkout first.'}, status=400)
+                # Check if we can get it from the user's most recent pending order
+                try:
+                    order = Order.objects.filter(
+                        user=request.user,
+                        status__in=['pending', 'processing']
+                    ).latest('created_at')
+                    # Store in session for future use
+                    request.session['order_id'] = order.id
+                    order_id = order.id
+                except Order.DoesNotExist:
+                    return JsonResponse({'error': 'No order found. Please complete checkout first.'}, status=400)
             
             try:
                 order = Order.objects.get(id=order_id, user=request.user)
@@ -419,6 +424,7 @@ class ProcessSavedPaymentMethodView(LoginRequiredMixin, View):
                     is_active=True
                 )
             except PaymentMethod.DoesNotExist:
+                available_methods = PaymentMethod.objects.filter(user=request.user, is_active=True)
                 return JsonResponse({'error': 'Payment method not found or access denied'}, status=400)
             
             # Get Stripe customer
@@ -427,20 +433,23 @@ class ProcessSavedPaymentMethodView(LoginRequiredMixin, View):
             except StripeCustomer.DoesNotExist:
                 return JsonResponse({'error': 'Stripe customer not found. Please add a payment method first.'}, status=400)
             
-            # Create PaymentIntent with the saved payment method
-            intent = stripe.PaymentIntent.create(
-                amount=int(order.total * 100),  # Convert to cents
-                currency='usd',
-                customer=stripe_customer.stripe_customer_id,
-                payment_method=payment_method.stripe_payment_method_id,
-                confirmation_method='manual',
-                confirm=True,
-                return_url=request.build_absolute_uri(reverse('orders:success')),
-                metadata={
-                    'order_id': str(order.id),
-                    'user_id': str(request.user.id),
-                }
-            )
+            try:
+                intent = stripe.PaymentIntent.create(
+                    amount=int(order.total * 100),  # Convert to cents
+                    currency='usd',
+                    customer=stripe_customer.stripe_customer_id,
+                    payment_method=payment_method.stripe_payment_method_id,
+                    confirmation_method='manual',
+                    confirm=True,
+                    return_url=request.build_absolute_uri(reverse('orders:success')),
+                    metadata={
+                        'order_id': str(order.id),
+                        'user_id': str(request.user.id),
+                    },
+                    expand=['latest_charge']  # Expand the latest charge to get charge details
+                )
+            except stripe.error.StripeError as e:
+                return JsonResponse({'error': f'Stripe error: {str(e)}'}, status=400)
             
             # Create Payment record
             payment = Payment.objects.create(
@@ -456,7 +465,8 @@ class ProcessSavedPaymentMethodView(LoginRequiredMixin, View):
             # Handle the payment intent status
             if intent.status == 'succeeded':
                 payment.status = 'succeeded'
-                payment.stripe_charge_id = intent.charges.data[0].id if intent.charges.data else ''
+                # Use latest_charge since we expanded it in the PaymentIntent creation
+                payment.stripe_charge_id = intent.latest_charge.id if intent.latest_charge else ''
                 payment.save()
                 
                 # Update order status

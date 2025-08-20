@@ -348,8 +348,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success) {
-                // Redirect to success page
-                window.location.href = data.redirect_url;
+                // Show success modal
+                showPaymentSuccessModal();
             } else {
                 throw new Error(data.error);
             }
@@ -357,20 +357,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async function processWithSavedMethod(methodId) {
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            
-            console.log('DEBUG: Processing saved payment method');
-            console.log('DEBUG: Method ID:', methodId);
-            console.log('DEBUG: CSRF Token:', csrfToken);
-            
+            console.log("Selected Method ID:", methodId);
+            console.log("CSRF Token:", csrfToken);
             try {
                 const requestData = {
                     payment_method_id: methodId
                 };
                 
-                console.log('DEBUG: Request data:', requestData);
+                const processUrl = '{% url "payments:process_saved" %}';
+                
+                console.log("Sending request to:", processUrl);
+                console.log("Request data:", requestData);
                 
                 // Process payment with saved method
-                const response = await fetch('{% url "payments:process_saved" %}', {
+                const response = await fetch(processUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -378,22 +378,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify(requestData)
                 });
+                console.log("Response status:", response.status);
+                console.log("Response ok:", response.ok);
                 
-                console.log('DEBUG: Response status:', response.status);
-                console.log('DEBUG: Response headers:', response.headers);
-
                 const data = await response.json();
-                console.log('DEBUG: Response data:', data);
-                
+                console.log("Response data:", data);
                 if (data.error) {
-                    console.error('ERROR: Server returned error:', data.error);
                     throw new Error(data.error);
                 }
 
                 if (data.requires_action) {
                     // Handle 3D Secure authentication if required
                     const result = await stripe.confirmCardPayment(data.payment_intent_client_secret);
-                    
+                    console.log("Result:", result);
                     if (result.error) {
                         throw new Error(result.error.message);
                     }
@@ -401,16 +398,54 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Payment succeeded after authentication, confirm with backend
                     await confirmPayment(result.paymentIntent.id);
                 } else if (data.success) {
-                    // Payment succeeded immediately, redirect to success page
-                    window.location.href = data.redirect_url;
+                    // Payment succeeded immediately, show success modal
+                    showPaymentSuccessModal();
                 } else {
                     throw new Error(data.error || 'Payment failed');
                 }
                 
             } catch (error) {
-                console.error('ERROR in processWithSavedMethod:', error);
                 throw error; // Re-throw to be handled by the main error handling
             }
+        }
+
+        function showPaymentSuccessModal() {
+            // Create modal HTML
+            const modalHTML = `
+                <div class="modal fade" id="paymentSuccessModal" tabindex="-1" aria-labelledby="paymentSuccessModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header border-0 pb-0">
+                                <button type="button" class="btn-close" aria-label="Close" onclick="redirectToHome()"></button>
+                            </div>
+                            <div class="modal-body text-center py-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                                </div>
+                                <h3 class="mb-3">Congrats!</h3>
+                                <h5 class="mb-4 text-muted">Payment is successful.</h5>
+                                <p class="lead">The order will arrive shortly.</p>
+                                <div class="mt-4">
+                                    <button type="button" class="btn btn-success btn-lg" onclick="redirectToHome()">
+                                        Continue Shopping
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('paymentSuccessModal'));
+            modal.show();
+        }
+
+        function redirectToHome() {
+            window.location.href = '/';
         }
 
         // Toggle new payment section based on selection
